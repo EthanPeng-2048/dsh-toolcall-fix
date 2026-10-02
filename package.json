@@ -1,0 +1,36 @@
+{
+  "name": "dsh-plugin-toolcall-fix",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DSH host plugin: repairs malformed model tool-call chunks (empty id / empty name) at the llm/stream waterfall so a degenerate tool call can no longer poison the v4 session log (toolCallId validation) or 400 the next provider request (missing function name).",
+  "type": "module",
+  "main": "lib/main.js",
+  "exports": {
+    ".": "./lib/main.js",
+    "./sanitize": "./lib/sanitize.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh",
+    "llm",
+    "tool-call",
+    "session-format"
+  ],
+  "license": "MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

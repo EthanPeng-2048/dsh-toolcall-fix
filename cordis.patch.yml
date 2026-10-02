@@ -1,0 +1,28 @@
+# dsh-plugin-toolcall-fix — profile bundle patch.
+#
+# 根因（证据见 README）：
+#   * MiMo (xiaomi/openai-completions) 偶发产出退化的 tool-call 块：
+#       { type:'tool-call', id:'', name:'', arguments:'{}' }
+#     实测样本：~/.dsh/sessions/--D-Codes-neuralnet.cpp--/session-d724c0f7… seq 137。
+#   * 空 id → v4 落盘 tool/result 被 assertV4ToolResultMessage 拒绝：
+#       "format v4 tool/result at seq 139 requires toolCallId matching its tool source"
+#     回合失败后日志停在未闭合的 tool/call(seq138)，崩溃恢复再用空 callId 合成
+#     closer 仍失败 → 该会话每轮都报同一错误，对话永久无法继续。
+#   * 空 name → 下一轮请求回放历史时 provider 400：
+#       "messages[199].tool_calls[1] is missing a function name"
+#     实测样本：session-aec5e44d… seq 482/491/500 连续 400。
+#
+# 插件在公开的 llm/stream waterfall 内只补字段、不增删块，对 llm-invariant
+# 流校验与 BlockAssembler 块顺序透明；空 name 换占位名后 dispatch 走
+# unknown-tool 错误结果路径，错误结果带合法 callId 可正常落盘，对话继续。
+- insert:
+    - id: toolcall-fix
+      name: 'dsh-plugin-toolcall-fix'
+      config:
+        enabled: true
+        # 空 name 的占位工具名：必须不命中任何已注册工具（= 会走出 unknown-tool
+        # 错误而非真实执行），且满足 provider 的函数名字符集 ^[A-Za-z0-9_-]{1,64}$。
+        placeholderName: invalid_tool_call
+        # true 时输出 JSONL 诊断（apply/llm-stream/repair 事件），用于在真实宿主里
+        # 验证插件已生效；默认写入 $DSH_HOME/toolcall-fix.trace.jsonl。
+        debug: true
